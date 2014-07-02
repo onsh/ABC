@@ -1,0 +1,25 @@
+author's alphabetical の推移
+著者の数
+
+1. PTP
+ alphabetical order
+ author
+ year
+ Specify Journals to Search: Progress of Theoretical Physics NOT all
+
+2. inspire
+ CV format(text)
+ arxiv 番号が変更になったのは0704年から
+ find date 2006 and eprint hep*
+ fin eprint hep-th/05*
+ 20年分 94年まで
+
+3. 日本物理学会
+ 学会のホームページから
+ 素粒子論と原子核理論
+ 実験は飛ばす
+ 分野の推移
+
+ 
+素粒子と原子核のグループ推移
+ サブタイトルを抜く
