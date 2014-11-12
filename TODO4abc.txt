@@ -1,11 +1,67 @@
-author's alphabetical の推移
-著者の数
+--- TO DO LIST ---
+* 著者名について
+- author's alphabetical の割合
+- 著者の数、年推移
+
+* タイトルについて
+- 年ごとの流行り
+
+* 受理日
+- 数の推移
+
+* アブストラクト 
+- 意味解釈
+- 類似論文
+- 時代ごとの流行り
+------------------
+
 
 1. PTP
  alphabetical order
  author
  year
- Specify Journals to Search: Progress of Theoretical Physics NOT all
+
+ advanced search ---
+ Specify Journals to Search:
+ Progress of Theoretical Physics NOT all
+
+ Limit Results:
+ all articles
+
+ Format Results:
+ standard format
+ View 125 results per page
+ Sort: newest first
+ ----------
+
+ ソースから探すもの
+ 一つの article に対して
+ <span class="cit-auth cit-auth-type-author"> 著者名
+ <span class="cit-title"> タイトル
+
+ 以下から日付は特定できるか？
+ <span class="cit-print-date"><span class="cit-sep
+ cit-sep-before-article-print-date">(</span>2012<span class="cit-sep
+ cit-sep-after-article-print-date">)</span> </span><span class="cit-vol">128
+ </span><span class="cit-issue"><span class="cit-sep
+ cit-sep-before-article-issue">(</span>6<span class="cit-sep
+ cit-sep-after-article-issue">):</span> </span><span class="cit-pages"><span
+ class="cit-first-page">1251</span><span class="cit-sep">-</span><span
+ class="cit-last-page">1268</span> </span><span class="cit-doi"><span
+ class="cit-sep cit-sep-before-article-doi"> doi:</span>10.1143/PTP.128.1251
+ </span></cite>
+
+ ！！！もしくは、各articleにリンクされた、abstractのページに飛び、そこから情報を取得す
+ る。！！！
+ タイトル
+ 著者名
+ 所属
+ 受理年月
+ アブストラクト
+ 
+ ただ、authorと所属の関係は取り扱いが難しい
+ 例: http://ptp.oxfordjournals.org/content/113/4/809.abstract?sid=bed25a78-79b7-404d-b26d-2cd6673b686f
+ 
 
 2. inspire
  CV format(text)

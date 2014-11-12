@@ -16,13 +16,13 @@ def main():
     #     data = f.read(100).decode('utf-8')
     #     print(data)
     
-    o1 = parse.urlsplit(url1)
-    o2 = parse.urlsplit(url2) # url1とurl2はqueryが違う
-    o3 = parse.urlsplit(url3) # url2とurl3はqueryの最後が違う &FIRSTINDEX=125 &FIRSTINDEX=250
+    q1 = parse.urlsplit(url1)
+    q2 = parse.urlsplit(url2) # url1とurl2はqueryが違う
+    q3 = parse.urlsplit(url3) # url2とurl3はqueryの最後が違う &FIRSTINDEX=125 &FIRSTINDEX=250
    
-    print(o1.query)
-    print(o2.query)
-    print(o3.query)
+    print(q1.query)
+    print(q2.query)
+    print(q3.query)
     
 
 main()        

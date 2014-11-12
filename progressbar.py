@@ -46,4 +46,3 @@ if __name__ == "__main__":
     # print("testing 1:")
     # pb = progressbar(1)
     # pb.progress(1)
-            
