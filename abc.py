@@ -18,7 +18,7 @@ def main():
     req = Request(url)
     try:
         response = urlopen(req)
-    except: URLError as e:
+    except URLError as e:
         if hasattr(e, 'reason'):
             print('We failed to reach a server.')
             print('Reason: ', e.reason)
