@@ -3,16 +3,15 @@
 
 from urllib.request import Request, urlopen
 from urllib.error import URLError
-import html5lib
+from urllib.parse import urljoin, urlparse
+from bs4 import BeautifulSoup
+# import html5lib
 # import xml.etree
 #import re
 #import csv
 
-def authorsLess(a0, a1):
-    return a0.split()[-1].lower() < a1.split()[-1].lower()
 
-
-def main():
+def get_abst_links():
     url = "http://ptp.oxfordjournals.org/search?fulltext=&submit=yes&x=14&y=12"
     # url = "http://ptp.oxfordjournals.org/search?submit=yes&FIRSTINDEX=10"
     req = Request(url)
@@ -27,19 +26,23 @@ def main():
             print('Error code: ', e.code)
     else:
         # everything is fine
+        html_doc = response.read()
+        soup = BeautifulSoup(html_doc)
+        respnse.close()
+     
+        base_url  = 'http://ptp.oxfordjournals.org/'
+        abst_list = []
+        for link in soup.find_all('a', rel = 'abstract'):
+            # i dont know the necessality using of urljoin()
+            abst_list.append(urljoin(base_url, link.get('href')))
+            print(abst_list)
+        
 
+def authorsLess(a0, a1):
+    return a0.split()[-1].lower() < a1.split()[-1].lower()
 
-    data = response.read()
-
-    dom = html5lib.parse(
-        data,
-        treebuilder = "etree",
-        namespaceHTMLElements = False
-    )
-
-    # xml.etree.ElementTree.dump( dom )
-    # print(dom)
-
+   
+def main():
     authorsList = []
     for article in dom.findall('.//*[@class="results-cit cit"]'):
         elems = article.findall('.//*[@class="cit-auth cit-auth-type-author"]')
@@ -51,4 +54,6 @@ def main():
         isABC = all(authorsLess(*a) for a in zip(authors[:-1], authors[1:]))
         print(isABC, len(authors), authors)
 
-main()
+if __name__ == '__main__':
+    main()
+
