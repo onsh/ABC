@@ -5,11 +5,34 @@ from urllib.request import Request, urlopen
 from urllib.error import URLError
 from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
-# import html5lib
-# import xml.etree
 #import re
-#import csv
 
+
+def get_next_page_url(url):
+    url = "http://ptp.oxfordjournals.org/search?fulltext=&submit=yes&x=14&y=12"
+    # url = "http://ptp.oxfordjournals.org/search?submit=yes&FIRSTINDEX=10"
+    req = Request(url)
+    try:
+        response = urlopen(req)
+    except URLError as e:
+        if hasattr(e, 'reason'):
+            print('We failed to reach a server.')
+            print('Reason: ', e.reason)
+        elif hasattr(e, 'code'):
+            print('The server could\'t fulfill the request.')
+            print('Error code: ', e.code)
+    else:
+        # everything is fine
+        page = response.read()
+        soup = BeautifulSoup(page)
+        respnse.close()
+        next_page_li = soup_package.find("li", class_="pager-next last")
+        if next_page_li is None :
+            next_page_url = None
+        else:
+            next_page_url base_url + next_page_li.a.get('href')
+            
+        return next_page_url 
 
 def get_abst_links():
     url = "http://ptp.oxfordjournals.org/search?fulltext=&submit=yes&x=14&y=12"
