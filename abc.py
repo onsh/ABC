@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/use/bin/env python3
 # -*- coding: utf-8 -*-
 
 from urllib.request import Request, urlopen
@@ -32,7 +32,25 @@ def get_next_page_url(url):
         else:
             next_page_url base_url + next_page_li.a.get('href')
             
-        return next_page_url 
+        return next_page_url
+
+# quoted from "Getting Started with Beautiful Soup"
+def get_bookdetails(url):
+    page = urllib2.urlopen(url)
+    soup_package = BeautifulSoup(page, "lxml")
+    page.close()
+    all_books_table = soup_package.find("table", class_="views-view-grid")
+    all_book_titles = all_books_table.find("div", class_="views-field-title")
+    isbn_list = []
+    for book_title in all_book_titles:
+        book_title_span = book_title.span
+        print("Title Name:"+book_title_span.a.string)
+        print("Url:"+book_title_span.a.get('href'))
+        price = book_title.find_next("div", class_="views-field-sell-price")
+        print("PacktPub Price:"+price.span.string)
+        isbn_list.apend(get_isbn(book_title_span.a.get('href')))
+    return isbn_list
+
 
 def get_abst_links():
     url = "http://ptp.oxfordjournals.org/search?fulltext=&submit=yes&x=14&y=12"
