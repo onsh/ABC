@@ -42,7 +42,15 @@ def get_next_page_url(url):
             
         return next_page_url
 
-# quoted from "Getting Started with Beautiful Soup"
+### quoted from "Getting Started with Beautiful Soup"
+def get_isbn(url):
+    book_title_url = packtpub_url + url
+    page = urllib2.urlopen(book_title_url)
+    soup_bookpage = BeautifulSoup(page, "lxml")
+    page.close()
+    isbn_tag = soup_bookpage.find('b', text=re.comiple("ISBN :"))
+    return isbn_tag.next_sibling
+
 def get_bookdetails(url):
     page = urllib2.urlopen(url)
     soup_package = BeautifulSoup(page, "lxml")
@@ -58,7 +66,8 @@ def get_bookdetails(url):
         print("PacktPub Price:"+price.span.string)
         isbn_list.apend(get_isbn(book_title_span.a.get('href')))
     return isbn_list
-
+ 
+# ------------------------------
 
 def get_abst_links():
     url = "http://ptp.oxfordjournals.org/search?fulltext=&submit=yes&x=14&y=12"
