@@ -17,6 +17,7 @@ from bs4 import BeautifulSoup
 # http://ptp.oxfordjournals.org/search?tmonth=&pubdate_year=&submit=yes&submit=yes&submit=Search&andorexacttitle=and&format=standard&firstpage=&fmonth=&title=&tyear=&hits=125&flag=&titleabstract=&journalcode=ptp&volume=&sortspec=reverse-date&andorexacttitleabs=and&author2=&andorexactfulltext=and&author1=&fyear=&doi=&fulltext=&FIRSTINDEX=250
 
 def get_next_page_url(url):
+    root_url = "http://ptp.oxfordjournals.org/"
     url = "http://ptp.oxfordjournals.org/search?fulltext=&submit=yes&x=14&y=12"
     # url = "http://ptp.oxfordjournals.org/search?submit=yes&FIRSTINDEX=10"
     req = Request(url)
@@ -34,11 +35,11 @@ def get_next_page_url(url):
         page = response.read()
         soup = BeautifulSoup(page)
         respnse.close()
-        next_page_li = soup_package.find("li", class_="pager-next last")
-        if next_page_li is None :
+        next_page_link = soup_package.find('a', class_="next-results-link")
+        if next_page_link is None :
             next_page_url = None
         else:
-            next_page_url base_url + next_page_li.a.get('href')
+            next_page_url = root_url + next_page_link.a.get('href')
             
         return next_page_url
 
