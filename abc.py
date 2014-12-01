@@ -16,30 +16,6 @@ from bs4 import BeautifulSoup
 ## third page
 # http://ptp.oxfordjournals.org/search?tmonth=&pubdate_year=&submit=yes&submit=yes&submit=Search&andorexacttitle=and&format=standard&firstpage=&fmonth=&title=&tyear=&hits=125&flag=&titleabstract=&journalcode=ptp&volume=&sortspec=reverse-date&andorexacttitleabs=and&author2=&andorexactfulltext=and&author1=&fyear=&doi=&fulltext=&FIRSTINDEX=250
 
-def get_next_page_url(url):
-    req = Request(url)
-    try:
-        response = urlopen(req)
-    except URLError as e:
-        if hasattr(e, 'reason'):
-            print('We failed to reach a server.')
-            print('Reason: ', e.reason)
-        elif hasattr(e, 'code'):
-            print('The server could\'t fulfill the request.')
-            print('Error code: ', e.code)
-    else:
-        # everything is fine
-        page = response.read()
-        soup = BeautifulSoup(page)
-        
-        next_page_link = soup.find('a', class_="next-results-link")
-        if next_page_link is None :
-            next_page_url = None
-        else:
-            next_page_url = root_url + next_page_link.get('href')
-            
-        return next_page_url
-
 ### quoted from "Getting Started with Beautiful Soup"
 def get_isbn(url):
     book_title_url = packtpub_url + url
@@ -67,9 +43,7 @@ def get_bookdetails(url):
  
 # ------------------------------
 
-def get_abst_links():
-    url = "http://ptp.oxfordjournals.org/search?fulltext=&submit=yes&x=14&y=12"
-    # url = "http://ptp.oxfordjournals.org/search?submit=yes&FIRSTINDEX=10"
+def clean_html():
     req = Request(url)
     try:
         response = urlopen(req)
@@ -82,18 +56,29 @@ def get_abst_links():
             print('Error code: ', e.code)
     else:
         # everything is fine
-        html_doc = response.read()
-        soup = BeautifulSoup(html_doc)
-        respnse.close()
-     
-        base_url  = 'http://ptp.oxfordjournals.org/'
-        abst_list = []
-        for link in soup.find_all('a', rel = 'abstract'):
-            # i dont know the necessality using of urljoin()
-            abst_list.append(urljoin(base_url, link.get('href')))
-            print(abst_list)
-        
+        page = response.read()
+        soup = BeautifulSoup(page)
+        return soup
 
+def get_next_page_url():
+    next_page_link = clean_html().find('a', class_="next-results-link")
+    if next_page_link is None :
+        next_page_url = None
+    else:
+        next_page_url = root_url + next_page_link.get('href')
+        
+    return next_page_url
+
+
+def get_abst_links():
+    base_url  = 'http://ptp.oxfordjournals.org/'
+    abst_list = []
+    for link in clean_html().find_all('a', rel = 'abstract'):
+        # i dont know the necessality using of urljoin()
+        abst_list.append(urljoin(base_url, link.get('href')))
+        print(abst_list)
+
+        
 def authorsLess(a0, a1):
     return a0.split()[-1].lower() < a1.split()[-1].lower()
 
