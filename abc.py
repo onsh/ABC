@@ -43,7 +43,7 @@ def get_bookdetails(url):
  
 # ------------------------------
 
-def clean_html():
+def clean_html(url):
     req = Request(url)
     try:
         response = urlopen(req)
@@ -57,11 +57,11 @@ def clean_html():
     else:
         # everything is fine
         page = response.read()
+        page = page.decode("utf-8")
         soup = BeautifulSoup(page)
-        return soup
-
-def get_next_page_url():
-    next_page_link = clean_html().find('a', class_="next-results-link")
+        
+def get_next_page_url(soup):
+    next_page_link = soup.find('a', class_ ='next-results-link')
     if next_page_link is None :
         next_page_url = None
     else:
@@ -70,10 +70,10 @@ def get_next_page_url():
     return next_page_url
 
 
-def get_abst_links():
+def get_abst_links(soup):
     base_url  = 'http://ptp.oxfordjournals.org/'
     abst_list = []
-    for link in clean_html().find_all('a', rel = 'abstract'):
+    for link in soup.find_all('a', rel = 'abstract'):
         # i dont know the necessality using of urljoin()
         abst_list.append(urljoin(base_url, link.get('href')))
         print(abst_list)
