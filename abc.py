@@ -5,7 +5,7 @@ from urllib.request import Request, urlopen
 from urllib.error import URLError
 from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
-#import re
+import re
 
 ## first page
 # http://ptp.oxfordjournals.org/search?submit=yes&pubdate_year=&volume=&firstpage=&doi=&author1=&author2=&title=&andorexacttitle=and&titleabstract=&andorexacttitleabs=and&fulltext=&andorexactfulltext=and&journalcode=ptp&fmonth=&fyear=&tmonth=&tyear=&flag=&format=standard&hits=125&sortspec=reverse-date&submit=yes&submit=Search
@@ -57,28 +57,49 @@ def clean_html(url):
     else:
         # everything is fine
         page = response.read()
-        page = page.decode("utf-8")
         soup = BeautifulSoup(page)
         
 def get_next_page_url(soup):
-    next_page_link = soup.find('a', class_ ='next-results-link')
+    next_page_link = soup.find("a", class_="next-results-link")
     if next_page_link is None :
         next_page_url = None
     else:
-        next_page_url = root_url + next_page_link.get('href')
-        
+        next_page_url = root_url + next_page_link.get("href")
     return next_page_url
 
 
 def get_abst_links(soup):
     base_url  = 'http://ptp.oxfordjournals.org/'
     abst_list = []
-    for link in soup.find_all('a', rel = 'abstract'):
+    for link in soup.find_all("a", rel="abstract"):
         # i dont know the necessality using of urljoin()
-        abst_list.append(urljoin(base_url, link.get('href')))
+        abst_list.append(urljoin(base_url, link.get("href")))
         print(abst_list)
 
-        
+def get_article_details(soup):
+    # title
+    title = soup.title.string
+    # authors
+    authorsList = []
+    for author in soup.find_all("a", class_="name-search"):
+        authorsList.append(author.string)
+    # publication date ['September', '29,', '2012.']
+    for x in soup.find_all("li", class_="received"):
+        pub_date = x.text.split()
+        pub_date = pub_date.pop(0)
+    # abstract
+    abstract = soup.find_all("p", id="p-1")[0].text
+    p = re.compile('\n\s*')
+    abstract = p.sub(' ', abstract)
+    # article info ['128', '(6):', '1001-1060.', '10.1143/PTP.128.1061']
+    # info = {'vol':"slug-vol", 'issue':"slug-issue", 'pages':"slug-pages", 'doi':"slug-doi"}
+    # info_keys = ['vol', 'issue', 'pages', 'doi']
+    # info_values = ["slug-vol", "slug-issue", "slug-pages", "slug-doi"]
+    # for k, v in zip(info_keys, info_values):
+    #     v_part = soup.find_all("span", class_=v)[0].text
+    #     info.append(k, v_part.strip())
+    
+
 def authorsLess(a0, a1):
     return a0.split()[-1].lower() < a1.split()[-1].lower()
 
