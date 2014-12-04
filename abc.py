@@ -16,32 +16,31 @@ import re
 ## third page
 # http://ptp.oxfordjournals.org/search?tmonth=&pubdate_year=&submit=yes&submit=yes&submit=Search&andorexacttitle=and&format=standard&firstpage=&fmonth=&title=&tyear=&hits=125&flag=&titleabstract=&journalcode=ptp&volume=&sortspec=reverse-date&andorexacttitleabs=and&author2=&andorexactfulltext=and&author1=&fyear=&doi=&fulltext=&FIRSTINDEX=250
 
-### quoted from "Getting Started with Beautiful Soup"
-def get_isbn(url):
-    book_title_url = packtpub_url + url
-    page = urllib2.urlopen(book_title_url)
-    soup_bookpage = BeautifulSoup(page, "lxml")
-    page.close()
-    isbn_tag = soup_bookpage.find('b', text=re.comiple("ISBN :"))
-    return isbn_tag.next_sibling
+### quoted from "Getting Started with Beautiful Soup" ---------
+# def get_isbn(url):
+#     book_title_url = packtpub_url + url
+#     page = urllib2.urlopen(book_title_url)
+#     soup_bookpage = BeautifulSoup(page, "lxml")
+#     page.close()
+#     isbn_tag = soup_bookpage.find('b', text=re.comiple("ISBN :"))
+#     return isbn_tag.next_sibling
 
-def get_bookdetails(url):
-    page = urllib2.urlopen(url)
-    soup_package = BeautifulSoup(page, "lxml")
-    page.close()
-    all_books_table = soup_package.find("table", class_="views-view-grid")
-    all_book_titles = all_books_table.find("div", class_="views-field-title")
-    isbn_list = []
-    for book_title in all_book_titles:
-        book_title_span = book_title.span
-        print("Title Name:"+book_title_span.a.string)
-        print("Url:"+book_title_span.a.get('href'))
-        price = book_title.find_next("div", class_="views-field-sell-price")
-        print("PacktPub Price:"+price.span.string)
-        isbn_list.apend(get_isbn(book_title_span.a.get('href')))
-    return isbn_list
- 
-# ------------------------------
+# def get_bookdetails(url):
+#     page = urllib2.urlopen(url)
+#     soup_package = BeautifulSoup(page, "lxml")
+#     page.close()
+#     all_books_table = soup_package.find("table", class_="views-view-grid")
+#     all_book_titles = all_books_table.find("div", class_="views-field-title")
+#     isbn_list = []
+#     for book_title in all_book_titles:
+#         book_title_span = book_title.span
+#         print("Title Name:"+book_title_span.a.string)
+#         print("Url:"+book_title_span.a.get('href'))
+#         price = book_title.find_next("div", class_="views-field-sell-price")
+#         print("PacktPub Price:"+price.span.string)
+#         isbn_list.apend(get_isbn(book_title_span.a.get('href')))
+#     return isbn_list
+###-------------------------------------------------------------
 
 def clean_html(url):
     req = Request(url)
@@ -58,23 +57,23 @@ def clean_html(url):
         # everything is fine
         page = response.read()
         soup = BeautifulSoup(page)
+        return soup
         
-def get_next_page_url(soup):
+def get_next_page_url(soup, base_url):
     next_page_link = soup.find("a", class_="next-results-link")
     if next_page_link is None :
         next_page_url = None
     else:
-        next_page_url = root_url + next_page_link.get("href")
+        next_page_url = base_url + next_page_link.get("href")
     return next_page_url
 
 
-def get_abst_links(soup):
-    base_url  = 'http://ptp.oxfordjournals.org/'
-    abst_list = []
+def get_article_links(soup, base_url):
+    article_list = []
     for link in soup.find_all("a", rel="abstract"):
         # i dont know the necessality using of urljoin()
-        abst_list.append(urljoin(base_url, link.get("href")))
-        print(abst_list)
+        article_list.append(urljoin(base_url, link.get("href")))
+        print(article_list)
 
 def get_article_details(soup):
     # title
@@ -105,13 +104,23 @@ def authorsLess(a0, a1):
 
    
 def main():
-    root_url = "http://ptp.oxfordjournals.org/"
+    base_url  = 'http://ptp.oxfordjournals.org/'
     url = "http://ptp.oxfordjournals.org/search?submit=yes&pubdate_year=&volume=&firstpage=&doi=&author1=&author2=&title=&andorexacttitle=and&titleabstract=&andorexacttitleabs=and&fulltext=&andorexactfulltext=and&journalcode=ptp&fmonth=&fyear=&tmonth=&tyear=&flag=&format=standard&hits=125&sortspec=reverse-date&submit=yes&submit=Search"
     # url = "http://ptp.oxfordjournals.org/search?fulltext=&submit=yes&x=14&y=12"
     # url = "http://ptp.oxfordjournals.org/search?submit=yes&FIRSTINDEX=10"
 
-    get_next_page_url(url)
+    soup = clean_html(url)
+    get_next_page_url(soup, base_url)
     
+
+    # If there is an abstract-link in an article,
+    # if  in  :
+    #     get_article_links(soup, base_url) <-- have to be changed to proper function
+    #     
+    # else:
+    #     extract rough info of an article
+    
+
     authorsList = []
     for article in dom.findall('.//*[@class="results-cit cit"]'):
         elems = article.findall('.//*[@class="cit-auth cit-auth-type-author"]')
