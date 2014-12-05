@@ -46,6 +46,7 @@ def clean_html(url):
     req = Request(url)
     try:
         response = urlopen(req)
+        response.addheaders = [('User-agent', 'Mozilla/5.0')]
     except URLError as e:
         if hasattr(e, 'reason'):
             print('We failed to reach a server.')
