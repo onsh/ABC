@@ -44,9 +44,9 @@ import re
 
 def clean_html(url):
     req = Request(url)
+    req.add_header('User-agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) AppleWebKit/537.78.2 (KHTML, like Gecko) Version/6.1.6 Safari/537.78.2')
     try:
         response = urlopen(req)
-        response.addheaders = [('User-agent', 'Mozilla/5.0')]
     except URLError as e:
         if hasattr(e, 'reason'):
             print('We failed to reach a server.')
@@ -56,7 +56,7 @@ def clean_html(url):
             print('Error code: ', e.code)
     else:
         # everything is fine
-        page = response.read()
+        page = response.read().decode('utf-8')
         soup = BeautifulSoup(page)
         return soup
         
