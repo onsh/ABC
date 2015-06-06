@@ -6,6 +6,7 @@ from urllib.error import URLError
 from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
 import re
+from pprint import pprint
 
 ## first page
 # http://ptp.oxfordjournals.org/search?submit=yes&pubdate_year=&volume=&firstpage=&doi=&author1=&author2=&title=&andorexacttitle=and&titleabstract=&andorexacttitleabs=and&fulltext=&andorexactfulltext=and&journalcode=ptp&fmonth=&fyear=&tmonth=&tyear=&flag=&format=standard&hits=125&sortspec=reverse-date&submit=yes&submit=Search
@@ -42,6 +43,13 @@ import re
 #     return isbn_list
 ###-------------------------------------------------------------
 
+# test function for my local development
+def read_html(filename):
+    with open(filename) as f:
+        page = f.read()
+    soup = BeautifulSoup(page)
+    return soup
+
 def clean_html(url):
     req = Request(url)
     req.add_header('User-agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) AppleWebKit/537.78.2 (KHTML, like Gecko) Version/6.1.6 Safari/537.78.2')
@@ -56,7 +64,7 @@ def clean_html(url):
             print('Error code: ', e.code)
     else:
         # everything is fine
-        page = response.read().decode('utf-8')
+        page = response.read()
         soup = BeautifulSoup(page)
         return soup
         
@@ -68,13 +76,15 @@ def get_next_page_url(soup, base_url):
         next_page_url = base_url + next_page_link.get("href")
     return next_page_url
 
+#def get_article_list(soup, base_url):
+
 
 def get_article_links(soup, base_url):
     article_list = []
-    for link in soup.find_all("a", rel="abstract"):
+    for link in soup.find_all('a', rel='abstract'):
         # i dont know the necessality using of urljoin()
         article_list.append(urljoin(base_url, link.get("href")))
-        print(article_list)
+    return article_list
 
 def get_article_details(soup):
     # title
@@ -110,9 +120,12 @@ def main():
     # url = "http://ptp.oxfordjournals.org/search?fulltext=&submit=yes&x=14&y=12"
     # url = "http://ptp.oxfordjournals.org/search?submit=yes&FIRSTINDEX=10"
 
-    soup = clean_html(url)
-    get_next_page_url(soup, base_url)
-    
+    soup = read_html('sample.html')
+    # soup = clean_html(url)
+    print('Next page >>> ', get_next_page_url(soup, base_url))
+    article_links = get_article_links(soup, base_url)
+    print('# of article links:', len(article_links))
+    pprint(article_links)
 
     # If there is an abstract-link in an article,
     # if  in  :
@@ -122,16 +135,16 @@ def main():
     #     extract rough info of an article
     
 
-    authorsList = []
-    for article in dom.findall('.//*[@class="results-cit cit"]'):
-        elems = article.findall('.//*[@class="cit-auth cit-auth-type-author"]')
-        # XXX: sanitize
-        authors = [e.text for e in elems]
-        authorsList.append(authors)
+    # authorsList = []
+    # for article in dom.findall('.//*[@class="results-cit cit"]'):
+    #     elems = article.findall('.//*[@class="cit-auth cit-auth-type-author"]')
+    #     # XXX: sanitize
+    #     authors = [e.text for e in elems]
+    #     authorsList.append(authors)
 
-    for authors in authorsList:
-        isABC = all(authorsLess(*a) for a in zip(authors[:-1], authors[1:]))
-        print(isABC, len(authors), authors)
+    # for authors in authorsList:
+    #     isABC = all(authorsLess(*a) for a in zip(authors[:-1], authors[1:]))
+    #     print(isABC, len(authors), authors)
 
 if __name__ == '__main__':
     main()

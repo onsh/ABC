@@ -1,6 +1,6 @@
 import urllib.request
 import urllib.parse
-from bs4 import BeautifulSoup //pip でインストールしたのは, python3 で使えない
+from bs4 import BeautifulSoup
 
 # Create a list of words to ignore
 ignorewords=set(['the','of','to','and','a','in','is','it'])
