@@ -6,10 +6,12 @@ from urllib.error import URLError
 from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
 from pprint import pprint
+import sys
 import re
 import lxml
 import time
 import json
+import random
 
 
 def read_html(filename):
@@ -34,7 +36,7 @@ def clean_html(url):
     else:
         # everything is fine
         page = response.read()
-        soup = BeautifulSoup(page)
+        soup = BeautifulSoup(page, "lxml")
         return soup
         
 
@@ -134,10 +136,12 @@ def get_other_info(soup):
     issue = soup.find('span', class_='slug-issue').string
     pages = soup.find('span', class_='slug-pages').string
     doi = soup.find('span', class_='slug-doi').string
+    article_type = soup.find('a', class_='tocsection-search').string
     info = {'vol': vol.strip(),
             'issue': issue.strip(),
             'pages': pages.strip(),
-            'doi': doi.strip()}
+            'doi': doi.strip(),
+            'type': article_type.strip()}
     print(info)
     return info
 
@@ -151,20 +155,31 @@ def main():
     url = "http://ptp.oxfordjournals.org/search?submit=yes&pubdate_year=&volume=&firstpage=&doi=&author1=&author2=&title=&andorexacttitle=and&titleabstract=&andorexacttitleabs=and&fulltext=&andorexactfulltext=and&journalcode=ptp&fmonth=&fyear=&tmonth=&tyear=&flag=&format=standard&hits=125&sortspec=reverse-date&submit=yes&submit=Search"
 
 
-    # soup = read_html('sample.html')
+    # soup = read_html('.html')
     soup = clean_html(url)
-    print('Next page >>> ', get_next_page_url(soup, base_url))
-    article_links = get_article_links(soup, base_url)
-    print('# of article links:', len(article_links))
-    pprint(article_links)
-
-    # authorsList = []
-    # for article in dom.findall('.//*[@class="results-cit cit"]'):
-    #     elems = article.findall('.//*[@class="cit-auth cit-auth-type-author"]')
-    #     # XXX: sanitize
-    #     authors = [e.text for e in elems]
-    #     authorsList.append(authors)
-
+    
+    article_num = 0
+    while next_page_link is not None:
+        next_page_link = get_next_page_url(soup, base_url)
+        article_links = get_article_links(soup, base_url)
+        for link in article_links:
+            article = clean_html(link)
+            article_info = {'title' : get_title(article),
+                            'authors' : get_authors(article),
+                            'affiliation' : get_affiliation(article),
+                            'date' : get_received_date(article),
+                            'abstract' : get_abstract(article),
+                            'info' : get_other_info(article)                            
+                            }
+            print(json.dumps(article_info))
+            time.sleep(10)
+        soup = clean_html(next_page_link)
+        article_num += len(article_links)
+        print('Dumped article number:', article_num)
+        rndm = random.randint(20, 40)
+        time.sleep(rndm)
+        
+        
     # for authors in authorsList:
     #     isABC = all(authorsLess(*a) for a in zip(authors[:-1], authors[1:]))
     #     print(isABC, len(authors), authors)
