@@ -6,6 +6,8 @@ from urllib.error import URLError
 from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
 from pprint import pprint
+from pymongo import MongoClient
+from pymongo.errors import ConnectionFailure
 import sys
 import re
 import lxml
@@ -37,7 +39,8 @@ def clean_html(url):
         # everything is fine
         page = response.read()
         soup = BeautifulSoup(page, "lxml")
-        return soup
+        page.close()
+    return soup
         
 
 def get_next_page_url(soup, base_url):
@@ -92,6 +95,7 @@ def get_authors(soup):
         authors_list.append(collab)
         
     print(authors_list)
+    return authors_list
         
 
 def get_affiliation(soup):
@@ -117,7 +121,7 @@ def get_received_date(soup):
                     'date': int(date),
                     'year': int(year)}
     print(json.dumps(received_date))
-    return(received_date)
+    return received_date
 
 
 def get_abstract(soup):
@@ -150,36 +154,54 @@ def isAlphabetical(a0, a1):
     return a0.split()[-1].lower() < a1.split()[-1].lower()
 
    
+def save2db(data):
+    ''' Connect to MongoDB '''
+    try:
+        client = MongoClient('localhost', 27017)
+    except ConnectionFailure as e:
+        sys.stderr.write("Could not connect to MongoDB: {0}".format(e))
+        sys.exit(1)
+
+    # Get a Database handle to a database named "PTP"
+    db = client.PTP
+    # bulk insert
+    db.articles.insert_many(data)
+
+
 def main():
     base_url  = 'http://ptp.oxfordjournals.org/'
     url = "http://ptp.oxfordjournals.org/search?submit=yes&pubdate_year=&volume=&firstpage=&doi=&author1=&author2=&title=&andorexacttitle=and&titleabstract=&andorexacttitleabs=and&fulltext=&andorexactfulltext=and&journalcode=ptp&fmonth=&fyear=&tmonth=&tyear=&flag=&format=standard&hits=125&sortspec=reverse-date&submit=yes&submit=Search"
 
 
-    # soup = read_html('.html')
-    soup = clean_html(url)
+    # page = read_html('.html')
+    page = clean_html(url)
     
-    article_num = 0
-    while next_page_link is not None:
-        next_page_link = get_next_page_url(soup, base_url)
-        article_links = get_article_links(soup, base_url)
-        for link in article_links:
-            article = clean_html(link)
-            article_info = {'title' : get_title(article),
-                            'authors' : get_authors(article),
-                            'affiliation' : get_affiliation(article),
-                            'date' : get_received_date(article),
-                            'abstract' : get_abstract(article),
-                            'info' : get_other_info(article)                            
-                            }
-            print(json.dumps(article_info))
-            time.sleep(10)
-        soup = clean_html(next_page_link)
-        article_num += len(article_links)
-        print('Dumped article number:', article_num)
-        rndm = random.randint(20, 40)
-        time.sleep(rndm)
-        
-        
+    counter = 1
+    continue_scrapping = True
+    while continue_scrapping:
+        next_page_link = get_next_page_url(page, base_url)
+        if next_page_link is None:
+            continue_scrapping = False
+        else:
+            article_links = get_article_links(page, base_url)
+            for link in article_links:
+                article = clean_html(link)
+                article_info = {
+                    'title' : get_title(article),
+                    'authors' : get_authors(article),
+                    'affiliation' : get_affiliation(article),
+                    'date' : get_received_date(article),
+                    'abstract' : get_abstract(article),
+                    'info' : get_other_info(article)
+                }
+                print(json.dumps(article_info))
+                time.sleep(10)
+            page = clean_html(next_page_link)
+            print('Dumped article number:', counter*125)
+            counter += 1
+            rndm = random.randint(20, 40)
+            time.sleep(rndm)
+
     # for authors in authorsList:
     #     isABC = all(authorsLess(*a) for a in zip(authors[:-1], authors[1:]))
     #     print(isABC, len(authors), authors)
