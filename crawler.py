@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 from pprint import pprint
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
+from contextlib import contextmanager
 import sys
 import re
 import lxml
@@ -23,9 +24,42 @@ def read_html(filename):
     return soup
 
 
+@contextmanager
+def fetch_url(url, max_times=5, wait_period=5):
+    retry_count = 0
+    header_list = [
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) AppleWebKit/537.78.2 \
+        (KHTML, like Gecko) Version/6.1.6 Safari/537.78.2',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) AppleWebKit/537.78.2 \
+        (KHTML, like Gecko) Version/6.1.6 Safari/537.78.2'
+    ]
+    while True:
+        try:
+            req = Request(url)
+            req.add_header('User-agent', random.choice(header_list))
+            f = urlopen(req)
+            retry_count += 1
+            if f.getcode() == 200 or retry_count >= max_times:
+                yield f
+                break
+            time.sleep(wait_period * retry_count * retry_count * 2)  # 10,40,90,160,250 sec.
+        finally:
+            print('We couldn\'t access to the following URL:', url)
+            f.close()
+
+
+def make_soup(response):
+    dashi = response.read()
+    soup = BeautifulSoup(dashi, "lxml")
+    dashi.close()
+    return soup
+
+
 def clean_html(url):
     req = Request(url)
-    req.add_header('User-agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) AppleWebKit/537.78.2 (KHTML, like Gecko) Version/6.1.6 Safari/537.78.2')
+    req.add_header(
+        'User-agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) \
+        AppleWebKit/537.78.2 (KHTML, like Gecko) Version/6.1.6 Safari/537.78.2')
     try:
         response = urlopen(req)
     except URLError as e:
@@ -33,22 +67,20 @@ def clean_html(url):
             print('We failed to reach a server.')
             print('Reason: ', e.reason)
         elif hasattr(e, 'code'):
-            print('The server could\'t fulfill the request.')
+            print('The server couldn\'t fulfill the request.')
             print('Error code: ', e.code)
     else:
         # everything is fine
-        page = response.read()
-        soup = BeautifulSoup(page, "lxml")
-        page.close()
+        soup = make_soup(response)
     return soup
-        
+
 
 def get_next_page_url(soup, base_url):
-    next_page_link = soup.find("a", class_="next-results-link")
+    next_page_link = soup.find('a', class_='next-results-link')
     if next_page_link is None:
         next_page_url = None
     else:
-        next_page_url = base_url + next_page_link.get("href")
+        next_page_url = urljoin(base_url, next_page_link.get('href'))
     return next_page_url
 
 
@@ -59,7 +91,7 @@ def get_article_links(soup, base_url):
     If the article has not an abstract page link,
     we get a reference page instead.
     '''
-    
+
     article_links_list = []
     articles = soup.find_all('li', class_='results-cit')
     for article in articles:
@@ -75,67 +107,69 @@ def get_article_links(soup, base_url):
 
 def get_title(soup):
     ''' Get a title from an article '''
-    
+
     h1_tag = soup.find('h1', id='article-title-1')
     title = h1_tag.string
-    print(title)
+    # print(title)
     return title
 
 
 def get_authors(soup):
     ''' Get authors list from an article '''
-    
+
     authors_list = []
     for author in soup.find_all('a', class_='name-search'):
         author = author.string
         authors_list.append(author)
-    
+
     for collab in soup.find_all('span', class_='collab'):
         collab = collab.string
         authors_list.append(collab)
-        
-    print(authors_list)
+
+    # print(authors_list)
     return authors_list
-        
+
 
 def get_affiliation(soup):
     ''' Get authors' affiliations from an article '''
-    
+
     aff_list = []
     for aff in soup.find_all(id=re.compile('^aff-')):
         num = aff.next_sibling.sup.string
         address = aff.next_sibling.contents[1].strip()
-        aff_data = {'num' : int(num), 'address' : address}
+        aff_data = {'num': int(num), 'address': address}
         aff_list.append(json.dumps(aff_data))
-    pprint(aff_list)
+    # pprint(aff_list)
     return aff_list
-    
+
 
 def get_received_date(soup):
     ''' Get a received date of an article '''
-    
+
     received = soup.find('li', class_='received')
     split_received = re.split(r'[,.\s]\s*', received.contents[1])
     month, date, year = split_received[:3]
-    received_date ={'month': month,
-                    'date': int(date),
-                    'year': int(year)}
-    print(json.dumps(received_date))
+    received_date = {
+        'month': month,
+        'date': int(date),
+        'year': int(year)
+    }
+    # print(json.dumps(received_date))
     return received_date
 
 
 def get_abstract(soup):
     ''' Get an abstract of an article '''
-    
+
     abstract = soup.find('p', id='p-1')
     abstract = abstract.string
-    print(abstract)
+    # print(abstract)
     return abstract
 
 
 def get_other_info(soup):
     ''' Get other article info of an article '''
-    
+
     vol = soup.find('span', class_='slug-vol').string
     issue = soup.find('span', class_='slug-issue').string
     pages = soup.find('span', class_='slug-pages').string
@@ -146,36 +180,44 @@ def get_other_info(soup):
             'pages': pages.strip(),
             'doi': doi.strip(),
             'type': article_type.strip()}
-    print(info)
+    # print(info)
     return info
 
 
-def isAlphabetical(a0, a1):
+def isAlphabeticalOder(a0, a1):
     return a0.split()[-1].lower() < a1.split()[-1].lower()
 
-   
-def save2db(data):
-    ''' Connect to MongoDB '''
+
+def save2db(data, mongo_db, mongo_db_coll, **mongo_conn_kw):
+    # Connects to the MongoDB server running on
+    # localhost:27017 by default
     try:
-        client = MongoClient('localhost', 27017)
+        client = MongoClient(**mongo_conn_kw)
     except ConnectionFailure as e:
         sys.stderr.write("Could not connect to MongoDB: {0}".format(e))
         sys.exit(1)
 
-    # Get a Database handle to a database named "PTP"
-    db = client.PTP
-    # bulk insert
-    db.articles.insert_many(data)
+    # Get a reference to a particular database
+    db = client[mongo_db]
+
+    # Reference a particular collection in the database
+    coll = db[mongo_db_coll]
+
+    # Perform a bulk insert and return the IDs
+    return coll.insert(data)
 
 
 def main():
-    base_url  = 'http://ptp.oxfordjournals.org/'
-    url = "http://ptp.oxfordjournals.org/search?submit=yes&pubdate_year=&volume=&firstpage=&doi=&author1=&author2=&title=&andorexacttitle=and&titleabstract=&andorexacttitleabs=and&fulltext=&andorexactfulltext=and&journalcode=ptp&fmonth=&fyear=&tmonth=&tyear=&flag=&format=standard&hits=125&sortspec=reverse-date&submit=yes&submit=Search"
-
+    base_url = 'http://ptp.oxfordjournals.org/'
+    url = "http://ptp.oxfordjournals.org/search?submit=yes&pubdate_year=&volume\
+    =&firstpage=&doi=&author1=&author2=&title=&andorexacttitle=and&titleabstract\
+    =&andorexacttitleabs=and&fulltext=&andorexactfulltext=and&journalcode\
+    =ptp&fmonth=&fyear=&tmonth=&tyear=&flag=&format=standard&hits=125&sortspec\
+    =reverse-date&submit=yes&submit=Search"
 
     # page = read_html('.html')
     page = clean_html(url)
-    
+
     counter = 1
     continue_scrapping = True
     while continue_scrapping:
@@ -187,12 +229,12 @@ def main():
             for link in article_links:
                 article = clean_html(link)
                 article_info = {
-                    'title' : get_title(article),
-                    'authors' : get_authors(article),
-                    'affiliation' : get_affiliation(article),
-                    'date' : get_received_date(article),
-                    'abstract' : get_abstract(article),
-                    'info' : get_other_info(article)
+                    'title': get_title(article),
+                    'authors': get_authors(article),
+                    'affiliation': get_affiliation(article),
+                    'date': get_received_date(article),
+                    'abstract': get_abstract(article),
+                    'info': get_other_info(article)
                 }
                 print(json.dumps(article_info))
                 time.sleep(10)
@@ -208,4 +250,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
