@@ -28,10 +28,7 @@ def read_html(filename):
 def fetch_url(url, max_times=5, wait_period=5):
     retry_count = 0
     header_list = [
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) AppleWebKit/537.78.2 \
-        (KHTML, like Gecko) Version/6.1.6 Safari/537.78.2',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) AppleWebKit/537.78.2 \
-        (KHTML, like Gecko) Version/6.1.6 Safari/537.78.2'
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) AppleWebKit/537.78.2 (KHTML, like Gecko) Version/6.1.6 Safari/537.78.2', 'Mozilla/5.0 (X11; Linux i686) AppleWebKit/537.31 (KHTML, like Gecko) Chrome/26.0.1410.63 Safari/537.31', 'Googlebot/2.1 (+http://www.google.com/bot.html)'
     ]
     while True:
         try:
@@ -51,15 +48,21 @@ def fetch_url(url, max_times=5, wait_period=5):
 def make_soup(response):
     dashi = response.read()
     soup = BeautifulSoup(dashi, "lxml")
-    dashi.close()
+    response.close()
     return soup
 
 
 def clean_html(url):
     req = Request(url)
-    req.add_header(
-        'User-agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) \
-        AppleWebKit/537.78.2 (KHTML, like Gecko) Version/6.1.6 Safari/537.78.2')
+    header_list = [
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) AppleWebKit/537.78.2 \
+        (KHTML, like Gecko) Version/6.1.6 Safari/537.78.2',
+        'Mozilla/5.0 (X11; Linux i686) AppleWebKit/537.31 (KHTML, like Gecko)\
+        Chrome/26.0.1410.63 Safari/537.31',
+        'Googlebot/2.1 (+http://www.google.com/bot.html)'
+    ]
+    req.add_header('User-agent', random.choice(header_list))
+
     try:
         response = urlopen(req)
     except URLError as e:
@@ -109,7 +112,7 @@ def get_title(soup):
     ''' Get a title from an article '''
 
     h1_tag = soup.find('h1', id='article-title-1')
-    title = h1_tag.string
+    title = h1_tag.contents[0]
     # print(title)
     return title
 
@@ -130,6 +133,7 @@ def get_authors(soup):
     return authors_list
 
 
+# XXX: sanitize
 def get_affiliation(soup):
     ''' Get authors' affiliations from an article '''
 
@@ -209,14 +213,17 @@ def save2db(data, mongo_db, mongo_db_coll, **mongo_conn_kw):
 
 def main():
     base_url = 'http://ptp.oxfordjournals.org/'
-    url = "http://ptp.oxfordjournals.org/search?submit=yes&pubdate_year=&volume\
-    =&firstpage=&doi=&author1=&author2=&title=&andorexacttitle=and&titleabstract\
-    =&andorexacttitleabs=and&fulltext=&andorexactfulltext=and&journalcode\
-    =ptp&fmonth=&fyear=&tmonth=&tyear=&flag=&format=standard&hits=125&sortspec\
-    =reverse-date&submit=yes&submit=Search"
+    # Oldest first
+    # url = "http://ptp.oxfordjournals.org/search?submit=yes&pubdate_year=&volume=&firstpage=&doi=&author1=&author2=&title=&andorexacttitle=and&titleabstract=&andorexacttitleabs=and&fulltext=&andorexactfulltext=and&journalcode=ptp&fmonth=&fyear=&tmonth=&tyear=&flag=&format=standard&hits=125&sortspec=reverse-date&submit=yes&submit=Search"
+
+    # Newest fist
+    url = "http://ptp.oxfordjournals.org/search?submit=yes&pubdate_year=&volume=&firstpage=&doi=&author1=&author2=&title=&andorexacttitle=and&titleabstract=&andorexacttitleabs=and&fulltext=&andorexactfulltext=and&journalcode=ptp&fmonth=&fyear=&tmonth=&tyear=&flag=&format=standard&hits=125&sortspec=date&submit=yes&submit=Search"
 
     # page = read_html('.html')
     page = clean_html(url)
+
+    # with fetch_url(url) as f:
+    #     page = make_soup(f)
 
     counter = 1
     continue_scrapping = True
@@ -228,20 +235,33 @@ def main():
             article_links = get_article_links(page, base_url)
             for link in article_links:
                 article = clean_html(link)
-                article_info = {
-                    'title': get_title(article),
-                    'authors': get_authors(article),
-                    'affiliation': get_affiliation(article),
-                    'date': get_received_date(article),
-                    'abstract': get_abstract(article),
-                    'info': get_other_info(article)
-                }
-                print(json.dumps(article_info))
+                if 'abstract' in link:
+                    article_info = {
+                        'title': get_title(article),
+                        'authors': get_authors(article),
+                        # 'affiliation': get_affiliation(article),
+                        'date': get_received_date(article),
+                        'abstract': get_abstract(article),
+                        'info': get_other_info(article),
+                        'url': link
+                    }
+                    print(json.dumps(article_info))
+                else:
+                    article_info = {
+                        'title': get_title(article),
+                        'authors': get_authors(article),
+                        # 'affiliation': get_affiliation(article),
+                        'date': get_received_date(article),
+                        'abstract': "",
+                        'info': get_other_info(article),
+                        'url': link
+                    }
+                    print(json.dumps(article_info))
                 time.sleep(10)
             page = clean_html(next_page_link)
             print('Dumped article number:', counter*125)
             counter += 1
-            rndm = random.randint(20, 40)
+            rndm = random.randint(45, 60)
             time.sleep(rndm)
 
     # for authors in authorsList:
