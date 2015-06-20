@@ -27,9 +27,7 @@ def read_html(filename):
 @contextmanager
 def fetch_url(url, max_times=5, wait_period=5):
     retry_count = 0
-    header_list = [
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) AppleWebKit/537.78.2 (KHTML, like Gecko) Version/6.1.6 Safari/537.78.2', 'Mozilla/5.0 (X11; Linux i686) AppleWebKit/537.31 (KHTML, like Gecko) Chrome/26.0.1410.63 Safari/537.31', 'Googlebot/2.1 (+http://www.google.com/bot.html)'
-    ]
+    header_list = ['Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) AppleWebKit/537.78.2 (KHTML, like Gecko) Version/6.1.6 Safari/537.78.2', 'Mozilla/5.0 (X11; Linux i686) AppleWebKit/537.31 (KHTML, like Gecko) Chrome/26.0.1410.63 Safari/537.31', 'Googlebot/2.1 (+http://www.google.com/bot.html)']
     while True:
         try:
             req = Request(url)
@@ -47,20 +45,14 @@ def fetch_url(url, max_times=5, wait_period=5):
 
 def make_soup(response):
     dashi = response.read()
-    soup = BeautifulSoup(dashi, "lxml")
+    soup = BeautifulSoup(dashi, 'lxml')
     response.close()
     return soup
 
 
 def clean_html(url):
     req = Request(url)
-    header_list = [
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) AppleWebKit/537.78.2 \
-        (KHTML, like Gecko) Version/6.1.6 Safari/537.78.2',
-        'Mozilla/5.0 (X11; Linux i686) AppleWebKit/537.31 (KHTML, like Gecko)\
-        Chrome/26.0.1410.63 Safari/537.31',
-        'Googlebot/2.1 (+http://www.google.com/bot.html)'
-    ]
+    header_list = ['Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) AppleWebKit/537.78.2 (KHTML, like Gecko) Version/6.1.6 Safari/537.78.2', 'Mozilla/5.0 (X11; Linux i686) AppleWebKit/537.31 (KHTML, like Gecko) Chrome/26.0.1410.63 Safari/537.31', 'Googlebot/2.1 (+http://www.google.com/bot.html)']
     req.add_header('User-agent', random.choice(header_list))
 
     try:
@@ -69,9 +61,11 @@ def clean_html(url):
         if hasattr(e, 'reason'):
             print('We failed to reach a server.')
             print('Reason: ', e.reason)
+            print('URL:', url)
         elif hasattr(e, 'code'):
             print('The server couldn\'t fulfill the request.')
             print('Error code: ', e.code)
+            print('URL:', url)
     else:
         # everything is fine
         soup = make_soup(response)
@@ -112,7 +106,7 @@ def get_title(soup):
     ''' Get a title from an article '''
 
     h1_tag = soup.find('h1', id='article-title-1')
-    title = h1_tag.contents[0]
+    title = str(h1_tag.contents[0:])
     # print(title)
     return title
 
@@ -133,14 +127,13 @@ def get_authors(soup):
     return authors_list
 
 
-# XXX: sanitize
 def get_affiliation(soup):
     ''' Get authors' affiliations from an article '''
 
     aff_list = []
     for aff in soup.find_all(id=re.compile('^aff-')):
-        num = aff.next_sibling.sup.string
-        address = aff.next_sibling.contents[1].strip()
+        num = aff.get('id')[-1]
+        address = aff.next_sibling.contents[-1].strip()
         aff_data = {'num': int(num), 'address': address}
         aff_list.append(json.dumps(aff_data))
     # pprint(aff_list)
@@ -153,11 +146,9 @@ def get_received_date(soup):
     received = soup.find('li', class_='received')
     split_received = re.split(r'[,.\s]\s*', received.contents[1])
     month, date, year = split_received[:3]
-    received_date = {
-        'month': month,
-        'date': int(date),
-        'year': int(year)
-    }
+    received_date = {'month': month,
+                     'date': int(date),
+                     'year': int(year)}
     # print(json.dumps(received_date))
     return received_date
 
@@ -166,7 +157,7 @@ def get_abstract(soup):
     ''' Get an abstract of an article '''
 
     abstract = soup.find('p', id='p-1')
-    abstract = abstract.string
+    abstract = str(abstract.contents[0:])
     # print(abstract)
     return abstract
 
@@ -188,7 +179,7 @@ def get_other_info(soup):
     return info
 
 
-def isAlphabeticalOder(a0, a1):
+def lessAuthors(a0, a1):
     return a0.split()[-1].lower() < a1.split()[-1].lower()
 
 
@@ -219,54 +210,57 @@ def main():
     # Newest fist
     url = "http://ptp.oxfordjournals.org/search?submit=yes&pubdate_year=&volume=&firstpage=&doi=&author1=&author2=&title=&andorexacttitle=and&titleabstract=&andorexacttitleabs=and&fulltext=&andorexactfulltext=and&journalcode=ptp&fmonth=&fyear=&tmonth=&tyear=&flag=&format=standard&hits=125&sortspec=date&submit=yes&submit=Search"
 
-    # page = read_html('.html')
-    page = clean_html(url)
+    # page = clean_html(url)
 
-    # with fetch_url(url) as f:
-    #     page = make_soup(f)
+    with fetch_url(url) as f:
+        page = make_soup(f)
 
     counter = 1
-    continue_scrapping = True
-    while continue_scrapping:
+    continue_scraping = True
+    while continue_scraping:
         next_page_link = get_next_page_url(page, base_url)
         if next_page_link is None:
-            continue_scrapping = False
+            continue_scraping = False
         else:
             article_links = get_article_links(page, base_url)
             for link in article_links:
                 article = clean_html(link)
+                authors = get_authors(article)
+
+                # Calculate whether authors' list is alphabetical order
+                isAO = all(lessAuthors(a0, a1) for a0, a1 in zip(authors[:-1], authors[1:]))
+
                 if 'abstract' in link:
                     article_info = {
                         'title': get_title(article),
                         'authors': get_authors(article),
-                        # 'affiliation': get_affiliation(article),
+                        'order': isAO,
+                        'affiliation': get_affiliation(article),
                         'date': get_received_date(article),
                         'abstract': get_abstract(article),
                         'info': get_other_info(article),
                         'url': link
                     }
-                    print(json.dumps(article_info))
+                    pprint(json.dumps(article_info))
                 else:
                     article_info = {
                         'title': get_title(article),
                         'authors': get_authors(article),
-                        # 'affiliation': get_affiliation(article),
+                        'order': isAO,
+                        'affiliation': get_affiliation(article),
                         'date': get_received_date(article),
                         'abstract': "",
                         'info': get_other_info(article),
                         'url': link
                     }
-                    print(json.dumps(article_info))
+                    pprint(json.dumps(article_info))
                 time.sleep(10)
             page = clean_html(next_page_link)
-            print('Dumped article number:', counter*125)
+            print('Dumped articles number:', counter * 125)
             counter += 1
             rndm = random.randint(45, 60)
             time.sleep(rndm)
 
-    # for authors in authorsList:
-    #     isABC = all(authorsLess(*a) for a in zip(authors[:-1], authors[1:]))
-    #     print(isABC, len(authors), authors)
 
 if __name__ == '__main__':
     main()
