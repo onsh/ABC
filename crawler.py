@@ -15,8 +15,10 @@ import lxml
 import time
 import json
 import random
+import unicodedata
 
 
+# Test for local environment
 def read_html(filename):
     with open(filename) as f:
         page = f.read()
@@ -33,11 +35,11 @@ def fetch_url(url, max_times=5, wait_period=5):
             req = Request(url)
             req.add_header('User-agent', random.choice(header_list))
             f = urlopen(req)
-            retry_count += 1
-            if f.getcode() == 200 or retry_count >= max_times:
+            if f.getcode() == 200 or retry_count > max_times:
                 yield f
                 break
-            time.sleep(wait_period * retry_count * retry_count * 2)  # 10,40,90,160,250 sec.
+            retry_count += 1
+            time.sleep(wait_period * retry_count * retry_count * 2)  # 10, 40, 90, 160, 250 sec.
         finally:
             print('We couldn\'t access to the following URL:', url)
             f.close()
@@ -103,8 +105,6 @@ def get_article_links(soup, base_url):
 
 
 def get_title(soup):
-    ''' Get a title from an article '''
-
     h1_tag = soup.find('h1', id='article-title-1')
     title = str(h1_tag.contents[0:])
     # print(title)
@@ -112,8 +112,6 @@ def get_title(soup):
 
 
 def get_authors(soup):
-    ''' Get authors list from an article '''
-
     authors_list = []
     for author in soup.find_all('a', class_='name-search'):
         author = author.string
@@ -122,14 +120,11 @@ def get_authors(soup):
     for collab in soup.find_all('span', class_='collab'):
         collab = collab.string
         authors_list.append(collab)
-
     # print(authors_list)
     return authors_list
 
 
 def get_affiliation(soup):
-    ''' Get authors' affiliations from an article '''
-
     aff_list = []
     for aff in soup.find_all(id=re.compile('^aff-')):
         num = aff.get('id')[-1]
@@ -141,8 +136,6 @@ def get_affiliation(soup):
 
 
 def get_received_date(soup):
-    ''' Get a received date of an article '''
-
     received = soup.find('li', class_='received')
     split_received = re.split(r'[,.\s]\s*', received.contents[1])
     month, date, year = split_received[:3]
@@ -154,8 +147,6 @@ def get_received_date(soup):
 
 
 def get_abstract(soup):
-    ''' Get an abstract of an article '''
-
     abstract = soup.find('p', id='p-1')
     abstract = str(abstract.contents[0:])
     # print(abstract)
@@ -179,11 +170,17 @@ def get_other_info(soup):
     return info
 
 
-def lessAuthors(a0, a1):
-    return a0.split()[-1].lower() < a1.split()[-1].lower()
+def lessAuthors(s0, s1):
+    # Normalize the text into a standard representaion
+    # cf. NFD, NFKC, NFKD  
+    t0 = unicodedata.normalize('NFC', s0)
+    t1 = unicodedata.normalize('NFC', s1)
 
+    # Leave the last word (author's family name),
+    # then compare the words
+    return t0.split()[-1].lower() < t1.split()[-1].lower()
 
-def save2db(data, mongo_db, mongo_db_coll, **mongo_conn_kw):
+def save_to_db(data, mongo_db, mongo_db_coll, **mongo_conn_kw):
     # Connects to the MongoDB server running on
     # localhost:27017 by default
     try:
@@ -210,13 +207,12 @@ def main():
     # Newest fist
     url = "http://ptp.oxfordjournals.org/search?submit=yes&pubdate_year=&volume=&firstpage=&doi=&author1=&author2=&title=&andorexacttitle=and&titleabstract=&andorexacttitleabs=and&fulltext=&andorexactfulltext=and&journalcode=ptp&fmonth=&fyear=&tmonth=&tyear=&flag=&format=standard&hits=125&sortspec=date&submit=yes&submit=Search"
 
-    # page = clean_html(url)
-
     with fetch_url(url) as f:
         page = make_soup(f)
 
-    counter = 1
+    pagenation_counter = 1
     continue_scraping = True
+
     while continue_scraping:
         next_page_link = get_next_page_url(page, base_url)
         if next_page_link is None:
@@ -227,8 +223,9 @@ def main():
                 article = clean_html(link)
                 authors = get_authors(article)
 
-                # Calculate whether authors' list is alphabetical order
-                isAO = all(lessAuthors(a0, a1) for a0, a1 in zip(authors[:-1], authors[1:]))
+                # Calculate whether author list is alphabetical order
+                is_alphabetical = all(lessAuthors(a0, a1) for a0, a1
+                                      in zip(authors[:-1], authors[1:]))
 
                 if 'abstract' in link:
                     article_info = {
@@ -241,7 +238,7 @@ def main():
                         'info': get_other_info(article),
                         'url': link
                     }
-                    pprint(json.dumps(article_info))
+                    # save_to_db(article_info, ptp, articles, onsh)
                 else:
                     article_info = {
                         'title': get_title(article),
@@ -253,14 +250,13 @@ def main():
                         'info': get_other_info(article),
                         'url': link
                     }
-                    pprint(json.dumps(article_info))
+                    # save_to_db(article_info, ptp, articles, onsh)
                 time.sleep(10)
-            page = clean_html(next_page_link)
-            print('Dumped articles number:', counter * 125)
-            counter += 1
-            rndm = random.randint(45, 60)
+            page = next_page_link
+            print('Dumped articles number:', pagenation_counter * 125)
+            pagenation_counter += 1  # less than 127
+            rndm = random.randint(10, 30)
             time.sleep(rndm)
-
 
 if __name__ == '__main__':
     main()
