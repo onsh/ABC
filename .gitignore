@@ -2,4 +2,8 @@
 *.txt
 *.html
 *.py
+*.ipynb
+.ipynb*
 !abc.py
+!crawler.py
+!local_test.py
